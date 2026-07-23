@@ -8,7 +8,13 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#7BA05B">
     <style>
-        /* Estilo rápido para ocultar el botón de descarga cuando ya esté instalada */
+        /* Corrección para forzar que los botones estén lado a lado */
+        .header-actions {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            gap: 8px !important;
+        }
         .hidden-install {
             display: none !important;
         }
@@ -44,9 +50,10 @@
             <div class="header-top">
                 <h2>NAVAJO</h2>
                 <div class="header-actions">
-                    <!-- Botón de descarga/instalación PWA (Solo visible en navegador web si se puede instalar) -->
+                    <!-- Botón de descarga/instalación PWA (Izquierda) -->
                     <button id="btn-install" class="icon-btn hidden-install" title="Instalar Aplicación">📲</button>
-                    <button id="btn-settings" class="icon-btn">⚙️</button>
+                    <!-- Botón de ajustes (Derecha) -->
+                    <button id="btn-settings" class="icon-btn" title="Configuración">⚙️</button>
                 </div>
             </div>
         </header>
@@ -197,14 +204,12 @@
 
     <script src="script.js"></script>
     <script>
-        // Script de gestión para la instalación del botón PWA en la cabecera
         let deferredPromptPWA = null;
         const btnInstallApp = document.getElementById('btn-install');
 
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPromptPWA = e;
-            // Mostrar el botón de descarga solo si la app NO está instalada y se puede instalar
             if (btnInstallApp) {
                 btnInstallApp.classList.remove('hidden-install');
             }
@@ -223,7 +228,6 @@
             });
         }
 
-        // Detectar si ya se está ejecutando como PWA instalada para ocultar el botón por seguridad
         window.addEventListener('DOMContentLoaded', () => {
             if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
                 if (btnInstallApp) {
