@@ -3,7 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Notificaciones PWA Android</title>
+    <title>Notificaciones PWA</title>
+
+    <!-- Vinculo con el archivo PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#7BA05B">
+
     <style>
         :root {
             --primary: #7BA05B;
@@ -60,7 +65,7 @@
             border-radius: 20px;
             font-size: 13px;
             font-weight: 600;
-            margin: 10px 0 24px;
+            margin: 10px 0 20px;
             background-color: rgba(255, 255, 255, 0.05);
         }
 
@@ -84,16 +89,9 @@
             transform: scale(0.97);
         }
 
-        .btn-primary {
-            background-color: var(--primary);
-            color: white;
-        }
-
-        .btn-secondary {
-            background-color: transparent;
-            color: var(--text-main);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-        }
+        .btn-primary { background-color: var(--primary); color: white; }
+        .btn-secondary { background-color: transparent; color: var(--text-main); border: 1px solid rgba(255, 255, 255, 0.15); }
+        .btn-install { background-color: #2A9D8F; color: white; display: none; }
 
         .info-box {
             background: rgba(255, 255, 255, 0.03);
@@ -110,8 +108,8 @@
 <body>
 
     <div class="card">
-        <h2>Prueba PWA / Android</h2>
-        <p>Sistema de notificaciones compatible con Chrome Escritorio, Chrome Android y PWA.</p>
+        <h2>Prueba Notificaciones PWA</h2>
+        <p>Sistema compatible con Chrome, Android y App instalada.</p>
 
         <div class="info-box" id="sw-status">
             Registrando Service Worker...
@@ -123,32 +121,53 @@
         </div>
 
         <div class="btn-group">
-            <button class="btn-secondary" onclick="pedirPermisos()">1. Solicitar Permisos</button>
-            <button class="btn-primary" onclick="enviarNotificacion()">2. Probar Notificación</button>
+            <button id="btn-install" class="btn-install" onclick="instalarPWA()">📲 Instalar como Aplicación</button>
+            <button class="btn-secondary" onclick="pedirPermisos()">1. Solicitar Permiso</button>
+            <button class="btn-primary" onclick="enviarNotificacion()">2. Enviar Notificación de Prueba</button>
         </div>
     </div>
 
     <script>
         const statusElem = document.getElementById('status');
         const swStatusElem = document.getElementById('sw-status');
+        const btnInstall = document.getElementById('btn-install');
         let swRegistration = null;
+        let deferredPrompt = null;
 
-        // 1. REGISTRAR EL SERVICE WORKER AL CARGAR (Imprescindible para Android)
+        // 1. REGISTRO DEL SERVICE WORKER
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js')
-                .then(reg => {
-                    swRegistration = reg;
-                    swStatusElem.innerHTML = "✅ Service Worker activo para Android";
-                })
-                .catch(err => {
-                    swStatusElem.innerHTML = "⚠️ Error al registrar sw.js (requiere HTTPS o Localhost)";
-                    console.error("SW error:", err);
-                });
-        } else {
-            swStatusElem.innerHTML = "❌ Tu navegador no soporta Service Workers";
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => {
+                        swRegistration = reg;
+                        swStatusElem.innerHTML = "✅ Service Worker activo y listo";
+                    })
+                    .catch(err => {
+                        swStatusElem.innerHTML = "❌ Error: Debe ejecutarse sobre HTTPS o Localhost";
+                        console.error("SW error:", err);
+                    });
+            });
         }
 
-        // 2. ACTUALIZAR ESTADO VISUAL
+        // 2. CAPTURAR EVENTO DE INSTALACIÓN PWA
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            btnInstall.style.display = 'block';
+        });
+
+        async function instalarPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    btnInstall.style.display = 'none';
+                }
+                deferredPrompt = null;
+            }
+        }
+
+        // 3. CONTROL DE ESTADOS Y PERMISOS
         function actualizarEstado() {
             if (!("Notification" in window)) {
                 statusElem.textContent = "No soportado ❌";
@@ -169,160 +188,50 @@
             }
         }
 
-        // 3. PEDIR PERMISOS
         async function pedirPermisos() {
-            if (!("Notification" in window)) {
-                alert("Tu navegador no soporta notificaciones.");
-                return;
-            }
-
-            if (Notification.permission === "denied") {
-                alert("Las notificaciones están bloqueadas en el navegador.\nDesbloquéalas tocando el icono del candado 🔒 junto a la URL.");
-                return;
-            }
-
-            const permiso = await Notification.requestPermission();
-            actualizarEstado();
-
-            if (permiso === "granted") {
-                enviarNotificacion();
-            }
-        }
-
-        // 4. ENVIAR NOTIFICACIÓN COMPATIBLE CON ANDROID Y ESCRITORIO
-        async function enviarNotificacion() {
-            if (Notification.permission !== "granted") {
-                alert("Primero debes otorgar los permisos pulsando el botón '1'.");
-                return;
-            }
-
-            const titulo = "¡Notificación Android / PWA! 🔔";
-            const opciones = {
-                body: "Si ves esto, el sistema de alertas funciona al 100%.",
-                icon: "https://cdn-icons-png.flaticon.com/512/1827/1827504.png",
-                vibrate: [200, 100, 200]
-            };
-
-            // Intento vía Service Worker (REQUERIDO EN ANDROID CHROME)
-            if (swRegistration && swRegistration.active) {
-                swRegistration.showNotification(titulo, opciones);
-            } 
-            // Fallback para escritorio si falla el SW
-            else {
-                new Notification(titulo, opciones);
-            }
-        }
-
-        actualizarEstado();
-    </script>
-</body>
-</html>
-
-        .alert {
-            background-color: rgba(230, 57, 70, 0.15);
-            color: var(--danger);
-            padding: 10px 14px;
-            border-radius: 8px;
-            font-size: 12px;
-            margin-bottom: 18px;
-            display: none;
-            text-align: left;
-            line-height: 1.4;
-        }
-    </style>
-</head>
-<body>
-
-    <div class="card">
-        <h2>Prueba de Notificaciones</h2>
-        <p>Herramienta para verificar si tu navegador permite solicitar permisos y mostrar alertas emergentes.</p>
-        
-        <div id="protocol-alert" class="alert">
-            ⚠️ <b>Aviso de entorno:</b> Si estás abriendo el archivo por IP (ej. 192.168.X.X) o HTTP normal, el navegador puede bloquear los permisos. Usa <b>HTTPS</b> o <b>http://localhost</b>.
-        </div>
-
-        <div class="status-container">
-            Estado actual de permisos:<br>
-            <span id="status" class="status-badge">Comprobando...</span>
-        </div>
-
-        <div class="btn-group">
-            <button id="btn-request" class="btn-secondary" onclick="pedirPermisos()">1. Solicitar Permiso</button>
-            <button id="btn-notify" class="btn-primary" onclick="enviarNotificacion()">2. Enviar Notificación</button>
-        </div>
-    </div>
-
-    <script>
-        const statusElem = document.getElementById('status');
-        const alertElem = document.getElementById('protocol-alert');
-
-        // Mostrar advertencia si no estamos en localhost o HTTPS
-        if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1' && location.protocol !== 'file:') {
-            alertElem.style.display = 'block';
-        }
-
-        function actualizarEstado() {
-            if (!("Notification" in window)) {
-                statusElem.textContent = "No soportado ❌";
-                statusElem.style.color = "#E63946";
-                return;
-            }
-
-            const permiso = Notification.permission;
-            if (permiso === "granted") {
-                statusElem.textContent = "Permitido 🟢";
-                statusElem.style.color = "#7BA05B";
-            } else if (permiso === "denied") {
-                statusElem.textContent = "Bloqueado 🔴";
-                statusElem.style.color = "#E63946";
-            } else {
-                statusElem.textContent = "Pendiente 🟡";
-                statusElem.style.color = "#E9C46A";
-            }
-        }
-
-        async function pedirPermisos() {
-            if (!("Notification" in window)) {
-                alert("Tu navegador no soporta la API de Notificaciones.");
-                return;
-            }
-
-            if (Notification.permission === "denied") {
-                alert("Las notificaciones están bloqueadas en tu navegador.\n\nDebes desbloquearlas haciendo clic en el icono del candado 🔒 al lado de la dirección Web.");
-                return;
-            }
-
-            const permiso = await Notification.requestPermission();
-            actualizarEstado();
-
-            if (permiso === "granted") {
-                enviarNotificacion();
-            }
-        }
-
-        function enviarNotificacion() {
             if (!("Notification" in window)) {
                 alert("Navegador no compatible.");
                 return;
             }
 
-            if (Notification.permission !== "granted") {
-                alert("Primero debes pulsar '1. Solicitar Permiso' para autorizar las alertas.");
+            if (Notification.permission === "denied") {
+                alert("Las notificaciones están bloqueadas.\nDesbloquéalas tocando el candado 🔒 junto a la dirección Web.");
                 return;
             }
 
-            // Lanzar la notificación de prueba
-            const notif = new Notification("¡Funciona correctamente! 🔔", {
-                body: "El sistema de notificaciones de tu app ya está listo para usarse.",
-                icon: "https://cdn-icons-png.flaticon.com/512/1827/1827504.png"
-            });
+            const permiso = await Notification.requestPermission();
+            actualizarEstado();
 
-            notif.onclick = () => {
-                window.focus();
-            };
+            if (permiso === "granted") {
+                enviarNotificacion();
+            }
         }
 
-        // Comprobación inicial al cargar la página
+        // 4. LANZAR NOTIFICACIÓN (Compatible con PWA e hilos en segundo plano)
+        async function enviarNotificacion() {
+            if (Notification.permission !== "granted") {
+                alert("Primero debes otorga permisos pulsando '1. Solicitar Permiso'");
+                return;
+            }
+
+            const titulo = "¡Notificación Funcional! 🔔";
+            const opciones = {
+                body: "Probando notificación en Android / Chrome / PWA.",
+                icon: "https://cdn-icons-png.flaticon.com/512/1827/1827504.png",
+                badge: "https://cdn-icons-png.flaticon.com/512/1827/1827504.png",
+                vibrate: [100, 50, 100],
+                data: { dateOfArrival: Date.now() }
+            };
+
+            // Usar el Service Worker (Método fiable para Android y PWA)
+            if (swRegistration && swRegistration.active) {
+                swRegistration.showNotification(titulo, opciones);
+            } else {
+                // Fallback clásico para escritorio
+                new Notification(titulo, opciones);
+            }
+        }
+
         actualizarEstado();
     </script>
 </body>
