@@ -1,12 +1,26 @@
-self.addEventListener('notificationclick', function(event) {
+// Activación inmediata del Service Worker
+self.addEventListener('install', (event) => {
+    self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+    event.waitUntil(clients.claim());
+});
+
+// Acción cuando el usuario toca la notificación
+self.addEventListener('notificationclick', (event) => {
     event.notification.close();
+
     event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
-            if (clientList.length > 0) {
-                return clientList[0].focus();
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+            for (const client of clientList) {
+                if (client.url && 'focus' in client) {
+                    return client.focus();
+                }
             }
-            return clients.openWindow('/');
+            if (clients.openWindow) {
+                return clients.openWindow('/');
+            }
         })
     );
 });
-
