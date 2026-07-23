@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prueba de Notificaciones</title>
+    <title>Notificaciones PWA Android</title>
     <style>
         :root {
             --primary: #7BA05B;
@@ -33,17 +33,18 @@
 
         .card {
             background-color: var(--card-bg);
-            border-radius: 16px;
+            border-radius: 18px;
             padding: 28px;
-            max-width: 400px;
+            max-width: 420px;
             width: 100%;
             text-align: center;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
         }
 
         h2 {
-            margin-bottom: 12px;
+            margin-bottom: 8px;
             color: var(--primary);
+            font-size: 22px;
         }
 
         p {
@@ -53,18 +54,13 @@
             line-height: 1.5;
         }
 
-        .status-container {
-            margin-bottom: 20px;
-            font-size: 14px;
-        }
-
         .status-badge {
             display: inline-block;
-            padding: 6px 14px;
+            padding: 8px 16px;
             border-radius: 20px;
             font-size: 13px;
             font-weight: 600;
-            margin-top: 6px;
+            margin: 10px 0 24px;
             background-color: rgba(255, 255, 255, 0.05);
         }
 
@@ -76,7 +72,7 @@
 
         button {
             padding: 14px;
-            border-radius: 10px;
+            border-radius: 12px;
             border: none;
             font-size: 15px;
             font-weight: 600;
@@ -85,7 +81,7 @@
         }
 
         button:active {
-            transform: scale(0.98);
+            transform: scale(0.97);
         }
 
         .btn-primary {
@@ -98,6 +94,129 @@
             color: var(--text-main);
             border: 1px solid rgba(255, 255, 255, 0.15);
         }
+
+        .info-box {
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 3px solid var(--primary);
+            padding: 10px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: var(--text-muted);
+            text-align: left;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h2>Prueba PWA / Android</h2>
+        <p>Sistema de notificaciones compatible con Chrome Escritorio, Chrome Android y PWA.</p>
+
+        <div class="info-box" id="sw-status">
+            Registrando Service Worker...
+        </div>
+
+        <div>
+            Estado de Permisos:<br>
+            <span id="status" class="status-badge">Comprobando...</span>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn-secondary" onclick="pedirPermisos()">1. Solicitar Permisos</button>
+            <button class="btn-primary" onclick="enviarNotificacion()">2. Probar Notificación</button>
+        </div>
+    </div>
+
+    <script>
+        const statusElem = document.getElementById('status');
+        const swStatusElem = document.getElementById('sw-status');
+        let swRegistration = null;
+
+        // 1. REGISTRAR EL SERVICE WORKER AL CARGAR (Imprescindible para Android)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(reg => {
+                    swRegistration = reg;
+                    swStatusElem.innerHTML = "✅ Service Worker activo para Android";
+                })
+                .catch(err => {
+                    swStatusElem.innerHTML = "⚠️ Error al registrar sw.js (requiere HTTPS o Localhost)";
+                    console.error("SW error:", err);
+                });
+        } else {
+            swStatusElem.innerHTML = "❌ Tu navegador no soporta Service Workers";
+        }
+
+        // 2. ACTUALIZAR ESTADO VISUAL
+        function actualizarEstado() {
+            if (!("Notification" in window)) {
+                statusElem.textContent = "No soportado ❌";
+                statusElem.style.color = "var(--danger)";
+                return;
+            }
+
+            const permiso = Notification.permission;
+            if (permiso === "granted") {
+                statusElem.textContent = "Permitido 🟢";
+                statusElem.style.color = "var(--primary)";
+            } else if (permiso === "denied") {
+                statusElem.textContent = "Bloqueado 🔴";
+                statusElem.style.color = "var(--danger)";
+            } else {
+                statusElem.textContent = "Pendiente 🟡";
+                statusElem.style.color = "#E9C46A";
+            }
+        }
+
+        // 3. PEDIR PERMISOS
+        async function pedirPermisos() {
+            if (!("Notification" in window)) {
+                alert("Tu navegador no soporta notificaciones.");
+                return;
+            }
+
+            if (Notification.permission === "denied") {
+                alert("Las notificaciones están bloqueadas en el navegador.\nDesbloquéalas tocando el icono del candado 🔒 junto a la URL.");
+                return;
+            }
+
+            const permiso = await Notification.requestPermission();
+            actualizarEstado();
+
+            if (permiso === "granted") {
+                enviarNotificacion();
+            }
+        }
+
+        // 4. ENVIAR NOTIFICACIÓN COMPATIBLE CON ANDROID Y ESCRITORIO
+        async function enviarNotificacion() {
+            if (Notification.permission !== "granted") {
+                alert("Primero debes otorgar los permisos pulsando el botón '1'.");
+                return;
+            }
+
+            const titulo = "¡Notificación Android / PWA! 🔔";
+            const opciones = {
+                body: "Si ves esto, el sistema de alertas funciona al 100%.",
+                icon: "https://cdn-icons-png.flaticon.com/512/1827/1827504.png",
+                vibrate: [200, 100, 200]
+            };
+
+            // Intento vía Service Worker (REQUERIDO EN ANDROID CHROME)
+            if (swRegistration && swRegistration.active) {
+                swRegistration.showNotification(titulo, opciones);
+            } 
+            // Fallback para escritorio si falla el SW
+            else {
+                new Notification(titulo, opciones);
+            }
+        }
+
+        actualizarEstado();
+    </script>
+</body>
+</html>
 
         .alert {
             background-color: rgba(230, 57, 70, 0.15);
