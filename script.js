@@ -254,7 +254,7 @@ function renderTasks() {
             openContextMenu(e, task);
         });
 
-        // ¡ESTO ERA LO QUE FALTABA! Insertar el elemento en la lista
+        // Insertar el elemento en la lista
         list.appendChild(li); 
         
     }); // FIN DEL forEach
@@ -265,7 +265,6 @@ function translateType(type) {
     if(type==='daily') return 'Todos los días';
     return 'Días específicos';
 }
-
 
 // ==========================================
 // GESTIÓN DE TAREAS (CRUD)
@@ -364,55 +363,77 @@ function openContextMenu(e, task) {
 }
 
 // ==========================================
-// NOTIFICACIONES
+// NOTIFICACIONES (CORREGIDO PARA ANDROID / PWA)
 // ==========================================
 function requestNotificationPermission() {
-    if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
+    if ("Notification" in window && Notification.permission === "default") {
         Notification.requestPermission();
     }
 }
 
 function startNotificationEngine() {
     if (notificationInterval) clearInterval(notificationInterval);
-    notificationInterval = setInterval(checkNotifications, 60000); // Check every minute
+    checkNotifications(); // Ejecución inicial inmediata
+    notificationInterval = setInterval(checkNotifications, 30000); // Comprobar cada 30 segundos para mayor precisión
 }
 
 function checkNotifications() {
-    if (Notification.permission !== "granted") return;
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
     
     const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
+    
+    // Obtener fecha LOCAL (evita el fallo de zona horaria de toISOString)
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
+    
     const currentDayOfWeek = now.getDay().toString();
-    const currentTime = now.toTimeString().slice(0,5);
 
     AppData.tasks.forEach(task => {
         if (task.completed) return;
         
         let shouldNotify = false;
         
-        // Determinar si aplica hoy
+        // Determinar si la tarea aplica para el día de hoy
         const isToday = (task.type === 'once' && task.date === todayStr) ||
                         (task.type === 'daily') ||
-                        (task.type === 'custom' && task.customDays.includes(currentDayOfWeek));
+                        (task.type === 'custom' && task.customDays && task.customDays.includes(currentDayOfWeek));
 
         if (!isToday) return;
 
-        // Calcular minutos de diferencia
-        const taskDate = new Date(`${todayStr}T${task.time}`);
+        // Calcular la diferencia exacta de minutos en hora local
+        const [taskHours, taskMins] = task.time.split(':').map(Number);
+        const taskDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), taskHours, taskMins);
         const diffMins = Math.round((taskDate - now) / 60000);
 
-        const notifyBefore = parseInt(AppData.config.notifyBefore);
+        const notifyBefore = parseInt(AppData.config.notifyBefore) || 0;
         
         if (AppData.config.notifyExact && diffMins === 0) shouldNotify = true;
         if (notifyBefore > 0 && diffMins === notifyBefore) shouldNotify = true;
         
-        // Avisar
+        // DISPARAR NOTIFICACIÓN VÍA SERVICE WORKER
         if (shouldNotify && !task.notified) {
-            new Notification("NAVAJO - Recordatorio", {
+            const titulo = "NAVAJO - Recordatorio";
+            const opciones = {
                 body: `${task.title} a las ${task.time}`,
-                icon: 'icons/icon-192.png'
-            });
-            task.notified = true; // Prevenir múltiples alertas el mismo minuto
+                icon: 'icons/icon-192.png',
+                badge: 'icons/icon-192.png',
+                vibrate: [200, 100, 200]
+            };
+
+            // Método correcto para Android, PWA y Chrome
+            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.ready.then(reg => {
+                    reg.showNotification(titulo, opciones);
+                }).catch(() => {
+                    new Notification(titulo, opciones); // Fallback para PC
+                });
+            } else {
+                new Notification(titulo, opciones);
+            }
+
+            task.notified = true; // Prevenir múltiples alertas
             setTimeout(() => { task.notified = false; }, 65000);
         }
     });
@@ -593,3 +614,4 @@ function setupServiceWorker() {
 
 // ARRANQUE
 window.addEventListener('DOMContentLoaded', initApp);
+
