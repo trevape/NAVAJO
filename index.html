@@ -7,6 +7,12 @@
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#7BA05B">
+    <style>
+        /* Estilo rápido para ocultar el botón de descarga cuando ya esté instalada */
+        .hidden-install {
+            display: none !important;
+        }
+    </style>
 </head>
 <body>
     <!-- PANTALLA DE BIENVENIDA -->
@@ -38,6 +44,8 @@
             <div class="header-top">
                 <h2>NAVAJO</h2>
                 <div class="header-actions">
+                    <!-- Botón de descarga/instalación PWA (Solo visible en navegador web si se puede instalar) -->
+                    <button id="btn-install" class="icon-btn hidden-install" title="Instalar Aplicación">📲</button>
                     <button id="btn-settings" class="icon-btn">⚙️</button>
                 </div>
             </div>
@@ -121,63 +129,62 @@
     </div>
 
     <!-- MODAL CONFIGURACIÓN -->
-  <div id="settings-modal" class="modal hidden">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Configuración</h3>
-            <button class="icon-btn" id="btn-close-settings">✕</button>
-        </div>
+    <div id="settings-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Configuración</h3>
+                <button class="icon-btn" id="btn-close-settings">✕</button>
+            </div>
 
-        <!-- SECCIÓN 1: APARIENCIA -->
-        <div class="settings-section">
-            <div class="settings-section-title">Apariencia</div>
-            <div class="settings-card">
-                <div class="settings-item">
-                    <label for="settings-theme">Tema de la app</label>
-                    <select id="settings-theme">
-                        <option value="auto">Automático</option>
-                        <option value="light">Claro</option>
-                        <option value="dark">Oscuro</option>
-                    </select>
+            <!-- SECCIÓN 1: APARIENCIA -->
+            <div class="settings-section">
+                <div class="settings-section-title">Apariencia</div>
+                <div class="settings-card">
+                    <div class="settings-item">
+                        <label for="settings-theme">Tema de la app</label>
+                        <select id="settings-theme">
+                            <option value="auto">Automático</option>
+                            <option value="light">Claro</option>
+                            <option value="dark">Oscuro</option>
+                        </select>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- SECCIÓN 2: NOTIFICACIONES -->
-        <div class="settings-section">
-            <div class="settings-section-title">Notificaciones</div>
-            <div class="settings-card">
-                <div class="settings-item">
-                    <label for="settings-notify-before">Avisar antes (mins)</label>
-                    <input type="number" id="settings-notify-before" min="0" max="60" value="15">
-                </div>
-                <div class="settings-item">
-                    <label for="settings-notify-exact">Aviso a la hora exacta</label>
-                    <label class="switch">
-                        <input type="checkbox" id="settings-notify-exact">
-                        <span class="slider"></span>
-                    </label>
+            <!-- SECCIÓN 2: NOTIFICACIONES -->
+            <div class="settings-section">
+                <div class="settings-section-title">Notificaciones</div>
+                <div class="settings-card">
+                    <div class="settings-item">
+                        <label for="settings-notify-before">Avisar antes (mins)</label>
+                        <input type="number" id="settings-notify-before" min="0" max="60" value="15">
+                    </div>
+                    <div class="settings-item">
+                        <label for="settings-notify-exact">Aviso a la hora exacta</label>
+                        <label class="switch">
+                            <input type="checkbox" id="settings-notify-exact">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- SECCIÓN 3: DATOS -->
-        <div class="settings-section">
-            <div class="settings-section-title">Copia de Seguridad</div>
-            <div class="settings-card" style="padding: 12px; gap: 10px;">
-                <button class="btn outline" id="btn-export">📤 Exportar Datos</button>
-                <button class="btn outline" id="btn-import-trigger">📥 Importar Datos</button>
-                <input type="file" id="file-import" class="hidden" accept=".json">
+            <!-- SECCIÓN 3: DATOS -->
+            <div class="settings-section">
+                <div class="settings-section-title">Copia de Seguridad</div>
+                <div class="settings-card" style="padding: 12px; gap: 10px;">
+                    <button class="btn outline" id="btn-export">📤 Exportar Datos</button>
+                    <button class="btn outline" id="btn-import-trigger">📥 Importar Datos</button>
+                    <input type="file" id="file-import" class="hidden" accept=".json">
+                </div>
             </div>
-        </div>
 
-        <!-- ZONA DE PELIGRO -->
-        <div class="settings-section">
-            <button class="btn danger" id="btn-reset-app">🗑️ Borrar todos los datos</button>
+            <!-- ZONA DE PELIGRO -->
+            <div class="settings-section">
+                <button class="btn danger" id="btn-reset-app">🗑️ Borrar todos los datos</button>
+            </div>
         </div>
     </div>
-</div>
-
     
     <!-- MODAL CONTEXTUAL DE TAREA -->
     <div id="context-menu" class="context-menu hidden">
@@ -189,5 +196,41 @@
     </div>
 
     <script src="script.js"></script>
+    <script>
+        // Script de gestión para la instalación del botón PWA en la cabecera
+        let deferredPromptPWA = null;
+        const btnInstallApp = document.getElementById('btn-install');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPromptPWA = e;
+            // Mostrar el botón de descarga solo si la app NO está instalada y se puede instalar
+            if (btnInstallApp) {
+                btnInstallApp.classList.remove('hidden-install');
+            }
+        });
+
+        if (btnInstallApp) {
+            btnInstallApp.addEventListener('click', async () => {
+                if (deferredPromptPWA) {
+                    deferredPromptPWA.prompt();
+                    const { outcome } = await deferredPromptPWA.userChoice;
+                    if (outcome === 'accepted') {
+                        btnInstallApp.classList.add('hidden-install');
+                    }
+                    deferredPromptPWA = null;
+                }
+            });
+        }
+
+        // Detectar si ya se está ejecutando como PWA instalada para ocultar el botón por seguridad
+        window.addEventListener('DOMContentLoaded', () => {
+            if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+                if (btnInstallApp) {
+                    btnInstallApp.classList.add('hidden-install');
+                }
+            }
+        });
+    </script>
 </body>
 </html>
