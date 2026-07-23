@@ -418,7 +418,7 @@ function checkNotifications() {
             const opciones = {
                 body: `${task.title} a las ${task.time}`,
                 icon: 'icons/icon-192.png',
-                badge: 'icons/icon-192.png',
+                badge: 'icons/iconnoti.png',
                 vibrate: [200, 100, 200]
             };
 
