@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>NAVAJO</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#7BA05B">
+</head>
+<body>
+    <!-- PANTALLA DE BIENVENIDA -->
+    <div id="welcome-screen" class="screen hidden">
+        <div class="welcome-content">
+            <img src="icons/icon-192.png" alt="Navajo Icon" class="welcome-icon">
+            <h1>NAVAJO</h1>
+            <p>Organización de tareas y recordatorios inteligentes.</p>
+            <ul>
+                <li>✔️ Funcionamiento offline</li>
+                <li>✔️ Datos guardados localmente</li>
+                <li>✔️ Privacidad total</li>
+            </ul>
+            <div class="theme-select">
+                <label>Elige tu tema inicial:</label>
+                <select id="welcome-theme">
+                    <option value="auto">Automático (Sistema)</option>
+                    <option value="light">Claro</option>
+                    <option value="dark">Oscuro</option>
+                </select>
+            </div>
+            <button id="btn-start" class="btn primary">Comenzar</button>
+        </div>
+    </div>
+
+    <!-- PANTALLA PRINCIPAL -->
+    <div id="main-screen" class="screen">
+        <header>
+            <div class="header-top">
+                <h2>NAVAJO</h2>
+                <div class="header-actions">
+                    <button id="btn-settings" class="icon-btn">⚙️</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Resumen del Día -->
+        <div id="daily-summary" class="summary-card">
+            <h3 id="summary-date">Hoy</h3>
+            <div class="summary-stats">
+                <span id="stat-pending">0 pendientes</span> | 
+                <span id="stat-completed">0 completadas</span>
+            </div>
+            <p id="stat-high-priority" class="high-priority-text">0 tareas de alta prioridad</p>
+            <div class="progress-bar-bg">
+                <div id="progress-bar-fill" class="progress-bar-fill"></div>
+            </div>
+            <div class="progress-text" id="progress-text">0%</div>
+        </div>
+
+        <!-- Lista de tareas -->
+        <div id="task-list-container">
+            <ul id="task-list"></ul>
+        </div>
+
+        <!-- Botón flotante Añadir -->
+        <button id="fab-add" class="fab">+</button>
+    </div>
+
+    <!-- MODAL AÑADIR/EDITAR TAREA -->
+    <div id="task-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3 id="modal-title">Nueva Tarea</h3>
+            <input type="hidden" id="task-id">
+            
+            <label>Nombre *</label>
+            <input type="text" id="task-name" placeholder="Ej. Ir al gimnasio" required>
+            
+            <label>Descripción (Opcional)</label>
+            <textarea id="task-desc" rows="2" placeholder="Detalles de la tarea..."></textarea>
+            
+            <label>Tipo de repetición</label>
+            <select id="task-type">
+                <option value="once">Una sola vez</option>
+                <option value="daily">Todos los días</option>
+                <option value="custom">Días personalizados</option>
+            </select>
+            
+            <div id="custom-days-container" class="hidden custom-days">
+                <label><input type="checkbox" value="1"> L</label>
+                <label><input type="checkbox" value="2"> M</label>
+                <label><input type="checkbox" value="3"> X</label>
+                <label><input type="checkbox" value="4"> J</label>
+                <label><input type="checkbox" value="5"> V</label>
+                <label><input type="checkbox" value="6"> S</label>
+                <label><input type="checkbox" value="0"> D</label>
+            </div>
+            
+            <div class="datetime-row">
+                <div class="datetime-col" id="date-col">
+                    <label>Fecha *</label>
+                    <input type="date" id="task-date">
+                </div>
+                <div class="datetime-col">
+                    <label>Hora *</label>
+                    <input type="time" id="task-time" required>
+                </div>
+            </div>
+            
+            <label>Prioridad</label>
+            <select id="task-priority">
+                <option value="high">Alta</option>
+                <option value="medium" selected>Media</option>
+                <option value="low">Baja</option>
+            </select>
+
+            <div class="modal-actions">
+                <button id="btn-cancel-task" class="btn secondary">Cancelar</button>
+                <button id="btn-save-task" class="btn primary">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CONFIGURACIÓN -->
+  <div id="settings-modal" class="modal hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Configuración</h3>
+            <button class="icon-btn" id="btn-close-settings">✕</button>
+        </div>
+
+        <!-- SECCIÓN 1: APARIENCIA -->
+        <div class="settings-section">
+            <div class="settings-section-title">Apariencia</div>
+            <div class="settings-card">
+                <div class="settings-item">
+                    <label for="settings-theme">Tema de la app</label>
+                    <select id="settings-theme">
+                        <option value="auto">Automático</option>
+                        <option value="light">Claro</option>
+                        <option value="dark">Oscuro</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN 2: NOTIFICACIONES -->
+        <div class="settings-section">
+            <div class="settings-section-title">Notificaciones</div>
+            <div class="settings-card">
+                <div class="settings-item">
+                    <label for="settings-notify-before">Avisar antes (mins)</label>
+                    <input type="number" id="settings-notify-before" min="0" max="60" value="15">
+                </div>
+                <div class="settings-item">
+                    <label for="settings-notify-exact">Aviso a la hora exacta</label>
+                    <label class="switch">
+                        <input type="checkbox" id="settings-notify-exact">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN 3: DATOS -->
+        <div class="settings-section">
+            <div class="settings-section-title">Copia de Seguridad</div>
+            <div class="settings-card" style="padding: 12px; gap: 10px;">
+                <button class="btn outline" id="btn-export">📤 Exportar Datos</button>
+                <button class="btn outline" id="btn-import-trigger">📥 Importar Datos</button>
+                <input type="file" id="file-import" class="hidden" accept=".json">
+            </div>
+        </div>
+
+        <!-- ZONA DE PELIGRO -->
+        <div class="settings-section">
+            <button class="btn danger" id="btn-reset-app">🗑️ Borrar todos los datos</button>
+        </div>
+    </div>
+</div>
+
+    
+    <!-- MODAL CONTEXTUAL DE TAREA -->
+    <div id="context-menu" class="context-menu hidden">
+        <button id="ctx-edit">✏️ Editar</button>
+        <button id="ctx-duplicate">📋 Duplicar</button>
+        <button id="ctx-toggle">✅/↩️ Estado</button>
+        <button id="ctx-snooze">⏰ Posponer (15m)</button>
+        <button id="ctx-delete" class="danger-text">🗑️ Eliminar</button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
